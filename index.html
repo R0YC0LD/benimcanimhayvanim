@@ -2,844 +2,601 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="theme-color" content="#2d3436">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Pou: Ultimate Final</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Professional Farm Sim (Vanilla JS)</title>
     <style>
-        /* =========================================
-           1. CORE & RESET & RESPONSIVE
-           ========================================= */
-        :root {
-            --primary: #f1c40f;
-            --accent: #e67e22;
-            --bg-bedroom: #a29bfe;
-            --bg-hall: #fdcb6e;
-            --bg-kitchen: #ffeaa7;
-            --bg-bathroom: #81ecec;
-            --bg-gameroom: #ff7675;
-            --ui-bg: rgba(255, 255, 255, 0.9);
-            --font: 'Segoe UI', system-ui, sans-serif;
-            --safe-bottom: env(safe-area-inset-bottom, 20px);
-        }
-
-        * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+        /* CSS Reset & Temel Ayarlar */
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-user-select: none; }
+        body, html { width: 100%; height: 100%; overflow: hidden; background-color: #2c3e50; font-family: 'Segoe UI', sans-serif; }
         
-        body {
-            margin: 0; padding: 0; width: 100vw; height: 100dvh;
-            overflow: hidden; font-family: var(--font);
-            background: #222; touch-action: none;
-        }
+        /* Oyun Sahnesi */
+        #gameCanvas { display: block; width: 100%; height: 100%; touch-action: none; }
 
-        /* =========================================
-           2. WORLD & ROOMS
-           ========================================= */
-        #world-track {
-            display: flex; width: 500vw; height: 100%;
-            transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
-            will-change: transform;
-        }
-
-        .room {
-            width: 100vw; height: 100%; position: relative;
-            overflow: hidden; display: flex; flex-direction: column; align-items: center;
-        }
-
-        /* Arka Plan Desenleri */
-        .room-0 { background: var(--bg-bedroom); background-image: radial-gradient(#fff 2px, transparent 2px); background-size: 40px 40px; }
-        .room-1 { background: var(--bg-hall); background-image: linear-gradient(90deg, rgba(255,255,255,0.2) 50%, transparent 50%); background-size: 80px 100%; }
-        .room-2 { background: var(--bg-kitchen); background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,0.2) 10px, rgba(255,255,255,0.2) 20px); }
-        .room-3 { background: var(--bg-bathroom); background-image: linear-gradient(rgba(255,255,255,0.3) 2px, transparent 2px), linear-gradient(90deg, rgba(255,255,255,0.3) 2px, transparent 2px); background-size: 50px 50px; }
-        .room-4 { background: var(--bg-gameroom); background-image: radial-gradient(circle, rgba(0,0,0,0.1) 20%, transparent 20%); background-size: 30px 30px; }
-
-        .room-label {
-            position: absolute; top: 12%; font-size: clamp(2rem, 5vw, 4rem); 
-            font-weight: 900; color: rgba(0,0,0,0.1); text-transform: uppercase; letter-spacing: 5px; pointer-events: none;
-        }
-
-        #night-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(10, 10, 35, 0.92); pointer-events: none; opacity: 0;
-            transition: opacity 1s; z-index: 50;
-        }
-
-        /* =========================================
-           3. CHARACTER (POU)
-           ========================================= */
-        #pou-wrapper {
-            position: absolute; top: 50%; left: 50%; 
-            transform: translate(-50%, -40%);
-            width: clamp(200px, 30vw, 300px); /* Tablet uyumlu boyutlandırma */
-            height: clamp(180px, 27vw, 270px);
-            z-index: 20;
-        }
-
-        #pou-body {
-            width: 100%; height: 100%;
-            background: var(--accent);
-            border-radius: 50% 50% 45% 45%;
-            position: relative;
-            box-shadow: inset -15px -15px 30px rgba(0,0,0,0.15), 0 20px 40px rgba(0,0,0,0.3);
-            display: flex; justify-content: center;
-            transition: transform 0.1s, background 0.3s;
-            cursor: pointer;
-        }
-
-        /* Animasyonlar */
-        @keyframes chew {
-            0% { transform: scale(1, 1); }
-            25% { transform: scale(1.1, 0.9); }
-            50% { transform: scale(0.9, 1.1); }
-            75% { transform: scale(1.05, 0.95); }
-            100% { transform: scale(1, 1); }
-        }
-        .chewing { animation: chew 0.5s infinite; }
-
-        .eyes { display: flex; gap: 15%; position: absolute; top: 30%; z-index: 25; width: 60%; justify-content: center; }
-        .eye {
-            width: 35%; padding-bottom: 35%; /* Kare oran */
-            background: white; border-radius: 50%;
-            border: clamp(3px, 0.5vw, 6px) solid #333; position: relative; overflow: hidden;
-        }
-        .pupil {
-            width: 40%; height: 40%; background: black; border-radius: 50%;
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-        }
-        .lid {
-            position: absolute; top: 0; left: 0; width: 100%; height: 0%;
-            background: inherit; z-index: 2; transition: height 0.1s; border-bottom: 2px solid #333;
-        }
-
-        .mouth {
-            width: 20%; height: 5%; border-bottom: clamp(3px, 0.6vw, 6px) solid #333; border-radius: 50%;
-            position: absolute; top: 65%; transition: 0.2s;
-        }
-        .mouth.open { height: 15%; background: #600; border: 3px solid #333; border-radius: 50%; }
-        .mouth.sad { transform: rotate(180deg) translateY(-10px); }
-
-        /* Aksesuarlar & Efektler */
-        .acc { position: absolute; left: 50%; transform: translateX(-50%); pointer-events: none; z-index: 30; }
-        #acc-hat { top: -25%; font-size: clamp(60px, 10vw, 100px); filter: drop-shadow(0 5px 5px rgba(0,0,0,0.3)); }
-        #acc-glasses { top: 32%; font-size: clamp(50px, 9vw, 90px); }
-
-        .dirt {
-            position: absolute; width: 40px; height: 40px; background: #5d4037;
-            border-radius: 50%; filter: blur(3px); z-index: 26; opacity: 0.8;
-            transition: opacity 0.3s;
-        }
-        .poop {
-            position: absolute; font-size: clamp(40px, 6vw, 60px); z-index: 15;
-            animation: bounce 2s infinite; cursor: pointer;
-            filter: drop-shadow(0 5px 5px rgba(0,0,0,0.3));
-        }
-        @keyframes bounce { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-10px);} }
-
-        /* =========================================
-           4. UI & HUD (TABLET/MOBILE OPTIMIZED)
-           ========================================= */
-        #ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 100; }
-
-        .top-bar {
-            position: absolute; top: 10px; width: 100%; padding: 0 20px;
-            display: flex; justify-content: space-between; pointer-events: auto;
-        }
-        .badge {
-            background: var(--ui-bg); padding: 8px 16px; border-radius: 20px;
-            font-weight: bold; color: #333; box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-            font-size: clamp(14px, 3vw, 24px); border: 2px solid #fff;
-            display: flex; align-items: center; gap: 5px;
-        }
-
-        .stats-panel {
-            position: absolute; top: 70px; left: 50%; transform: translateX(-50%);
-            background: rgba(255,255,255,0.6); padding: 10px; border-radius: 15px;
-            display: flex; gap: 10px; backdrop-filter: blur(5px);
-            width: clamp(250px, 60vw, 500px);
-        }
-        .stat-group { flex: 1; height: 10px; background: rgba(0,0,0,0.1); border-radius: 5px; overflow: hidden; position: relative; }
-        .stat-fill { height: 100%; width: 100%; transition: width 0.5s; }
-        .stat-icon { position: absolute; top: -25px; left: 50%; transform: translateX(-50%); font-size: 16px; }
-
-        /* Bottom Dock */
-        .dock {
-            position: absolute; bottom: calc(20px + var(--safe-bottom)); width: 100%;
-            display: flex; justify-content: center; pointer-events: auto;
-            transition: transform 0.3s;
-        }
-        .dock.hidden { transform: translateY(200px); }
-
-        .dock-scroll {
-            background: var(--ui-bg); padding: 15px; border-radius: 30px;
-            display: flex; gap: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            overflow-x: auto; max-width: 90vw; scrollbar-width: none;
-        }
-        .dock-scroll::-webkit-scrollbar { display: none; }
-
-        .btn {
-            min-width: clamp(60px, 12vw, 80px); height: clamp(60px, 12vw, 80px);
-            background: white; border-radius: 18px; border: none;
-            border-bottom: 4px solid #ccc; font-size: clamp(24px, 5vw, 36px);
-            display: flex; justify-content: center; align-items: center; cursor: pointer;
-        }
-        .btn:active { transform: translateY(4px); border-bottom: 0; background: #eee; }
-
-        /* Drag Item */
-        .drag-obj {
-            position: absolute; width: 80px; height: 80px; font-size: 60px;
-            z-index: 200; pointer-events: none; display: flex; justify-content: center; align-items: center;
-            filter: drop-shadow(0 10px 10px rgba(0,0,0,0.2));
-            transform: scale(1.2); transition: transform 0.1s;
-        }
-
-        /* Toast */
-        #toast {
-            position: absolute; top: 130px; left: 50%; transform: translateX(-50%) translateY(-20px);
-            background: #333; color: white; padding: 12px 30px; border-radius: 30px;
-            opacity: 0; transition: 0.3s; z-index: 500; font-weight: bold; font-size: 18px;
-        }
-        #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
-
-        /* =========================================
-           5. MODALS (SHOP & GAME)
-           ========================================= */
-        .modal {
-            position: fixed; top:0; left:0; width:100%; height:100%;
-            background: rgba(0,0,0,0.8); z-index: 1000;
-            display: none; justify-content: center; align-items: center;
-            backdrop-filter: blur(5px);
-        }
-        .modal.open { display: flex; animation: fadeIn 0.2s; }
-        @keyframes fadeIn { from{opacity:0;} to{opacity:1;} }
+        /* Kullanıcı Arayüzü (HUD) Overlay */
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
         
-        .card {
-            width: 90%; max-width: 500px; height: 85%; background: #f5f6fa;
-            border-radius: 25px; display: flex; flex-direction: column; overflow: hidden;
-            animation: popUp 0.3s;
+        /* Üst Bilgi Paneli */
+        .hud-panel {
+            position: absolute; top: 10px; left: 10px; right: 10px;
+            display: flex; justify-content: space-between;
+            padding: 10px; background: rgba(255, 255, 255, 0.9);
+            border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            font-weight: bold; color: #333; pointer-events: auto;
         }
-        @keyframes popUp { from{transform:scale(0.8);} to{transform:scale(1);} }
 
-        .card-header { padding: 20px; background: #fff; display:flex; justify-content:space-between; align-items:center; font-weight:bold; font-size:1.2rem; border-bottom:1px solid #ddd; }
-        .card-body { flex: 1; overflow-y: auto; padding: 15px; }
-        .close-btn { background: #ff7675; color: white; border:none; width:36px; height:36px; border-radius:50%; font-size:18px; cursor:pointer;}
+        /* Context Menu (Tarlaya tıklayınca açılan menü) */
+        #context-menu {
+            position: absolute; display: none;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 50px; padding: 10px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+            pointer-events: auto; transform: translate(-50%, -100%);
+            z-index: 100; flex-direction: row; gap: 10px;
+        }
 
-        .shop-tabs { display: flex; gap: 10px; padding: 10px; background: #fff; overflow-x: auto;}
-        .tab { padding: 10px 20px; background: #eee; border-radius: 20px; border:none; font-weight:bold; cursor:pointer; white-space:nowrap;}
-        .tab.active { background: #333; color: white; }
-
-        .shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 10px; }
-        .item { background: white; padding: 15px; border-radius: 15px; text-align: center; cursor: pointer; border: 2px solid transparent; transition:0.1s; }
-        .item:active { transform: scale(0.95); }
-        .item.owned { border-color: #2ecc71; background: #edfff4; }
-
-        /* Game Canvas */
-        .game-wrapper { width: 100%; height: 100%; position: relative; background: #222; }
-        canvas { display: block; width: 100%; height: 100%; }
-        .game-ui { position: absolute; top: 20px; left: 20px; color: white; font-size: 24px; font-weight: bold; pointer-events: none; text-shadow: 0 2px 4px #000; }
-
+        /* Araç İkonları */
+        .tool-icon {
+            width: 60px; height: 60px; background: #fff; border: 2px solid #ddd;
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-size: 30px; cursor: pointer; transition: transform 0.1s;
+        }
+        .tool-icon:active { transform: scale(0.9); background: #eee; }
+        
+        /* Bildirimler (Toast) */
+        .toast {
+            position: absolute; bottom: 10%; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.7); color: white; padding: 10px 20px;
+            border-radius: 20px; opacity: 0; transition: opacity 0.5s; pointer-events: none;
+        }
     </style>
 </head>
 <body>
 
-    <div id="night-overlay"></div>
+    <canvas id="gameCanvas"></canvas>
 
-    <div id="world-track">
-        <div class="room room-0"><div class="room-label">Yatak Odası</div></div>
-        <div class="room room-1"><div class="room-label">Salon</div></div>
-        <div class="room room-2"><div class="room-label">Mutfak</div></div>
-        <div class="room room-3"><div class="room-label">Banyo</div></div>
-        <div class="room room-4"><div class="room-label">Oyun Odası</div></div>
+    <div id="ui-layer">
+        <div class="hud-panel">
+            <div id="level-display">Lvl: 1</div>
+            <div id="xp-display">XP: 0/100</div>
+            <div id="coin-display">💰 500</div>
+            <div id="silo-display">Depo: 0/20</div>
+        </div>
+        
+        <div id="context-menu"></div>
+        
+        <div id="toast-msg" class="toast">Mesaj</div>
     </div>
 
-    <div id="pou-wrapper">
-        <div class="acc" id="acc-hat"></div>
-        <div class="acc" id="acc-glasses"></div>
-        <div id="pou-body" onclick="Engine.poke()">
-            <div class="eyes">
-                <div class="eye"><div class="lid" id="lid-l"></div><div class="pupil" id="p-l"></div></div>
-                <div class="eye"><div class="lid" id="lid-r"></div><div class="pupil" id="p-r"></div></div>
-            </div>
-            <div class="mouth" id="mouth"></div>
-        </div>
-    </div>
+<script>
+/**
+ * PART 1: CONFIGURATION & DATABASE
+ */
 
-    <div id="ui">
-        <div class="top-bar">
-            <div class="badge">🪙 <span id="coin-disp">0</span></div>
-            <div class="badge" onclick="Engine.saveGame(); UI.toast('Kaydedildi!')">💾</div>
-        </div>
+// Oyun Sabitleri
+const TILE_SIZE = 80;
+const GRID_ROWS = 6;
+const GRID_COLS = 6;
+const SAVE_KEY = 'FarmSim_SaveData_v1';
 
-        <div class="stats-panel">
-            <div class="stat-group"><div class="stat-icon">🍖</div><div class="stat-fill" id="bar-hunger" style="background:#ff7675"></div></div>
-            <div class="stat-group"><div class="stat-icon">🧼</div><div class="stat-fill" id="bar-clean" style="background:#74b9ff"></div></div>
-            <div class="stat-group"><div class="stat-icon">⚡</div><div class="stat-fill" id="bar-energy" style="background:#ffeaa7"></div></div>
-            <div class="stat-group"><div class="stat-icon">😊</div><div class="stat-fill" id="bar-fun" style="background:#a29bfe"></div></div>
-        </div>
+// CropManager: Ekin Veritabanı
+const CropManager = {
+    WHEAT: { id: 'wheat', name: 'Buğday', emoji: '🌾', growTime: 5000, sellPrice: 5, seedCost: 1, xp: 2 }, // 5 sn
+    CORN:  { id: 'corn',  name: 'Mısır',  emoji: '🌽', growTime: 10000, sellPrice: 12, seedCost: 3, xp: 4 }, // 10 sn
+    CARROT:{ id: 'carrot',name: 'Havuç',  emoji: '🥕', growTime: 20000, sellPrice: 25, seedCost: 7, xp: 8 }, // 20 sn
+    
+    // Yardımcı: ID'den veriyi çekme
+    getData: function(id) {
+        return Object.values(this).find(c => c.id === id);
+    }
+};
 
-        <div id="toast">Hoşgeldin!</div>
+// Tool Tipleri (Orak veya Tohumlar)
+const ToolType = {
+    HARVEST: 'harvest',
+    PLANT: 'plant'
+};
+</script><script>
+/**
+ * PART 2: CORE SYSTEMS
+ */
 
-        <div class="dock hidden" id="dock-0">
-            <div class="dock-scroll">
-                <button class="btn" onclick="Engine.toggleSleep()">💡</button>
-                <button class="btn" onclick="Shop.open('clothes')">👕</button>
-                <button class="btn" onclick="Shop.open('wallpaper')">🖼️</button>
-            </div>
-        </div>
-        <div class="dock" id="dock-1">
-            <div class="dock-scroll">
-                <small style="color:#666; font-weight:bold;">Odaları gezmek için kaydır</small>
-            </div>
-        </div>
-        <div class="dock hidden" id="dock-2">
-            <div class="dock-scroll" id="dock-food">
-                <button class="btn" onclick="Shop.open('food')" style="border-color:#fab1a0; background:#fff0f0">🛒</button>
-            </div>
-        </div>
-        <div class="dock hidden" id="dock-3">
-            <div class="dock-scroll">
-                <button class="btn" id="tool-sponge" onmousedown="Interaction.startTool(event,'sponge')" ontouchstart="Interaction.startTool(event,'sponge')">🧽</button>
-                <button class="btn" id="tool-shower" onmousedown="Interaction.startTool(event,'shower')" ontouchstart="Interaction.startTool(event,'shower')">🚿</button>
-                <button class="btn" onclick="Shop.open('potions')">🧪</button>
-            </div>
-        </div>
-        <div class="dock hidden" id="dock-4">
-            <div class="dock-scroll">
-                <button class="btn" onclick="MiniGames.start('skyjump')">🚀 Zıpla</button>
-                <button class="btn" onclick="MiniGames.start('fooddrop')">🍎 Yakala</button>
-            </div>
-        </div>
-    </div>
+// --- SAVE SYSTEM ---
+class SaveSystem {
+    static load() {
+        try {
+            const data = localStorage.getItem(SAVE_KEY);
+            return data ? JSON.parse(data) : null;
+        } catch (e) {
+            console.error("Save yükleme hatası:", e);
+            return null;
+        }
+    }
 
-    <div class="modal" id="modal-shop">
-        <div class="card">
-            <div class="card-header">
-                <span>Market</span>
-                <button class="close-btn" onclick="Shop.close()">✕</button>
-            </div>
-            <div class="shop-tabs">
-                <button class="tab active" onclick="Shop.render('food')">Yiyecek</button>
-                <button class="tab" onclick="Shop.render('clothes')">Giyim</button>
-                <button class="tab" onclick="Shop.render('potions')">İksir</button>
-            </div>
-            <div class="card-body">
-                <div class="shop-grid" id="shop-grid"></div>
-            </div>
-        </div>
-    </div>
+    static save(gameState) {
+        try {
+            localStorage.setItem(SAVE_KEY, JSON.stringify(gameState));
+            console.log("Oyun otomatik kaydedildi.");
+        } catch (e) {
+            console.error("Kayıt hatası:", e);
+        }
+    }
+}
 
-    <div class="modal" id="modal-game">
-        <div class="game-wrapper">
-            <canvas id="game-cvs"></canvas>
-            <div class="game-ui">Skor: <span id="game-score">0</span></div>
-            <button style="position:absolute; top:20px; right:20px; z-index:10; font-size:30px; background:rgba(0,0,0,0.5); border:none; color:white; border-radius:50%; width:50px; height:50px;" onclick="MiniGames.stop()">✕</button>
-            <div id="game-msg" style="position:absolute; bottom:20px; width:100%; text-align:center; color:rgba(255,255,255,0.7);">Oynamak için ekrana dokun</div>
-        </div>
-    </div>
+// --- TILE CLASS (Hücre Mantığı) ---
+class Tile {
+    constructor(row, col) {
+        this.row = row;
+        this.col = col;
+        this.state = 'empty'; // empty, plowed, planted
+        this.cropId = null;
+        this.plantedAt = 0;
+        this.isVisualHighlight = false; // Drag efekti için
+    }
 
-    <script>
-        /* =========================================
-           DATA & CONFIG
-           ========================================= */
-        const DB = {
-            food: [
-                {id:'burger', name:'Burger', icon:'🍔', price:15, fill:25},
-                {id:'pizza', name:'Pizza', icon:'🍕', price:20, fill:30},
-                {id:'sushi', name:'Sushi', icon:'🍣', price:25, fill:20},
-                {id:'donut', name:'Donut', icon:'🍩', price:10, fill:15},
-                {id:'broccoli', name:'Brokoli', icon:'🥦', price:5, fill:10},
-                {id:'fries', name:'Patates', icon:'🍟', price:8, fill:12}
-            ],
-            clothes: [
-                {id:'hat_top', name:'Silindir', icon:'🎩', price:150, type:'hat'},
-                {id:'hat_cap', name:'Kep', icon:'🧢', price:80, type:'hat'},
-                {id:'hat_cow', name:'Kovboy', icon:'🤠', price:120, type:'hat'},
-                {id:'gls_sun', name:'Gözlük', icon:'🕶️', price:100, type:'glasses'},
-                {id:'gls_nerd', name:'Nerd', icon:'🤓', price:90, type:'glasses'}
-            ],
-            potions: [
-                {id:'pot_heal', name:'Tam Şifa', icon:'❤️', price:100, type:'heal'},
-                {id:'col_blue', name:'Mavi', icon:'🔵', price:200, type:'color', val:'#74b9ff'},
-                {id:'col_pink', name:'Pembe', icon:'🟣', price:200, type:'color', val:'#e056fd'},
-                {id:'col_green', name:'Yeşil', icon:'🟢', price:200, type:'color', val:'#55efc4'},
-                {id:'col_def', name:'Turuncu', icon:'🟠', price:200, type:'color', val:'#e67e22'}
-            ]
-        };
+    // Ekin durumu kontrolü
+    update() {
+        // Sadece veri tutar, görselleştirme GridSystem'de yapılır
+    }
 
-        const State = {
-            coins: 200,
-            stats: { hunger: 80, clean: 70, energy: 90, fun: 80 },
-            inventory: ['🍔', '🥦'],
-            unlocked: [],
-            equipped: { hat: null, glasses: null, color: '#e67e22' },
-            room: 1,
-            sleep: false,
-            lastLogin: Date.now()
-        };
+    // Büyüme oranını hesapla (0.0 ile 1.0 arası)
+    getGrowthProgress() {
+        if (this.state !== 'planted' || !this.cropId) return 0;
+        const crop = CropManager.getData(this.cropId);
+        const elapsed = Date.now() - this.plantedAt;
+        return Math.min(elapsed / crop.growTime, 1.0);
+    }
 
-        /* =========================================
-           ENGINE CORE
-           ========================================= */
-        const Engine = {
-            init: () => {
-                Engine.load();
-                UI.update();
-                UI.renderInventory();
-                UI.switchRoom(1);
-                
-                // Loops
-                setInterval(Engine.tick, 2000); // Stat decay
-                setInterval(Engine.blink, 4000); // Göz kırpma
-                setInterval(Engine.spawnPoopChance, 15000); // Kaka ihtimali
-                
-                Interaction.initSwipe();
-                Interaction.initEyeTrack();
-            },
+    isReady() {
+        return this.getGrowthProgress() >= 1.0;
+    }
+}
 
-            tick: () => {
-                if(State.sleep) {
-                    State.stats.energy = Math.min(100, State.stats.energy + 4);
-                    State.stats.hunger = Math.max(0, State.stats.hunger - 0.5);
-                } else {
-                    State.stats.hunger = Math.max(0, State.stats.hunger - 1);
-                    State.stats.clean = Math.max(0, State.stats.clean - 0.5);
-                    State.stats.energy = Math.max(0, State.stats.energy - 0.5);
-                    State.stats.fun = Math.max(0, State.stats.fun - 0.8);
-                }
-                UI.update();
-            },
+// --- INPUT MANAGER (Mobile & Desktop Normalization) ---
+class InputManager {
+    constructor(canvas, gameEngine) {
+        this.canvas = canvas;
+        this.engine = gameEngine;
+        this.isDragging = false;
+        this.activeTool = null; // { type: 'plant', cropId: 'wheat' } veya { type: 'harvest' }
+        
+        this.lastX = 0;
+        this.lastY = 0;
 
-            saveGame: () => {
-                State.lastLogin = Date.now();
-                localStorage.setItem('pou_ultimate_final', JSON.stringify(State));
-            },
+        // Event Listeners
+        this.bindEvents();
+    }
 
-            load: () => {
-                const d = localStorage.getItem('pou_ultimate_final');
-                if(d) {
-                    try {
-                        const saved = JSON.parse(d);
-                        Object.assign(State, saved);
-                        // Offline hesaplama (Basit)
-                        const mins = (Date.now() - State.lastLogin) / 60000;
-                        if(mins > 1) {
-                            State.stats.hunger = Math.max(0, State.stats.hunger - mins * 0.2);
-                            State.stats.energy = Math.max(0, State.stats.energy - mins * 0.1);
-                        }
-                    } catch(e) { console.error("Save bozuk", e); }
-                }
-                UI.applyLook();
-            },
+    bindEvents() {
+        // Mouse
+        window.addEventListener('mousedown', (e) => this.start(e.clientX, e.clientY));
+        window.addEventListener('mousemove', (e) => this.move(e.clientX, e.clientY));
+        window.addEventListener('mouseup', () => this.end());
 
-            toggleSleep: () => {
-                State.sleep = !State.sleep;
-                document.getElementById('night-overlay').style.opacity = State.sleep ? 1 : 0;
-                document.querySelectorAll('.lid').forEach(l => l.style.height = State.sleep ? '100%' : '0%');
-                UI.toast(State.sleep ? "İyi Geceler..." : "Günaydın!");
-            },
+        // Touch
+        this.canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault(); // Scroll engelle
+            this.start(e.touches[0].clientX, e.touches[0].clientY);
+        }, { passive: false });
 
-            poke: () => {
-                if(State.sleep) { UI.toast("Şşş! Uyuyor."); return; }
-                const b = document.getElementById('pou-body');
-                b.style.transform = "scale(1.1, 0.9)";
-                setTimeout(()=>b.style.transform="scale(1)", 150);
-                State.stats.fun = Math.min(100, State.stats.fun + 5);
-                UI.update();
-            },
+        this.canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            this.move(e.touches[0].clientX, e.touches[0].clientY);
+        }, { passive: false });
 
-            spawnPoopChance: () => {
-                if(!State.sleep && Math.random() > 0.7 && State.room !== 3) {
-                    const p = document.createElement('div');
-                    p.className = 'poop';
-                    p.innerText = '💩';
-                    p.style.left = (Math.random() * 60 + 20) + 'vw';
-                    p.style.top = (Math.random() * 20 + 60) + 'vh';
-                    p.onclick = function() {
-                        this.remove();
-                        State.coins += 5;
-                        State.stats.clean = Math.min(100, State.stats.clean + 5);
-                        UI.toast("+5 Altın");
-                        UI.update();
-                    };
-                    document.querySelector(`.room-${State.room}`).appendChild(p);
-                    State.stats.clean -= 10;
-                    UI.update();
-                }
-            },
+        this.canvas.addEventListener('touchend', () => this.end());
+    }
 
-            spawnDirt: () => {
-                const d = document.createElement('div');
-                d.className = 'dirt';
-                d.style.left = (Math.random()*60+20) + '%';
-                d.style.top = (Math.random()*60+20) + '%';
-                document.getElementById('pou-body').appendChild(d);
-                State.stats.clean -= 5;
-            },
-
-            blink: () => {
-                if(State.sleep) return;
-                const lids = document.querySelectorAll('.lid');
-                lids.forEach(l => l.style.height = '100%');
-                setTimeout(() => lids.forEach(l => l.style.height = '0%'), 150);
-            },
-
-            eatAnimation: () => {
-                const b = document.getElementById('pou-body');
-                const m = document.getElementById('mouth');
-                b.classList.add('chewing');
-                m.classList.add('open');
-                setTimeout(() => {
-                    b.classList.remove('chewing');
-                    m.classList.remove('open');
-                }, 1500);
+    start(x, y) {
+        // UI etkileşimi mi yoksa Canvas mı?
+        // Drag sadece Tool seçildiyse başlar (UIManager handle edecek)
+        // Burada genel input takibi yapıyoruz.
+        this.lastX = x;
+        this.lastY = y;
+        
+        // Raycast ile hangi tile?
+        const tile = this.engine.gridSystem.getTileAtScreenPos(x, y);
+        
+        // Eğer bir tool aktif değilse ve tile'a tıklandıysa menü aç
+        if (!this.engine.uiManager.isToolActive) {
+            if (tile) {
+                this.engine.uiManager.showContextMenu(tile, x, y);
+            } else {
+                this.engine.uiManager.hideContextMenu();
             }
-        };
+        }
+    }
 
-        /* =========================================
-           UI MANAGER
-           ========================================= */
-        const UI = {
-            update: () => {
-                const s = State.stats;
-                document.getElementById('bar-hunger').style.width = s.hunger + '%';
-                document.getElementById('bar-clean').style.width = s.clean + '%';
-                document.getElementById('bar-energy').style.width = s.energy + '%';
-                document.getElementById('bar-fun').style.width = s.fun + '%';
-                document.getElementById('coin-disp').innerText = State.coins;
+    move(x, y) {
+        this.lastX = x;
+        this.lastY = y;
 
-                const m = document.getElementById('mouth');
-                if(!m.classList.contains('open')) {
-                    if(s.hunger < 30 || s.clean < 30 || s.fun < 30) m.classList.add('sad');
-                    else m.classList.remove('sad');
-                }
-            },
-
-            switchRoom: (idx) => {
-                if(idx < 0 || idx > 4) return;
-                State.room = idx;
-                document.getElementById('world-track').style.transform = `translateX(-${idx * 100}vw)`;
-                document.querySelectorAll('.dock').forEach(d => d.classList.add('hidden'));
-                const target = document.getElementById(`dock-${idx}`);
-                if(target) setTimeout(()=>target.classList.remove('hidden'), 250);
-            },
-
-            renderInventory: () => {
-                const cont = document.getElementById('dock-food');
-                // Alışveriş butonu dışındakileri temizle
-                while(cont.children.length > 1) cont.removeChild(cont.lastChild);
-                
-                State.inventory.forEach((item, i) => {
-                    const btn = document.createElement('button');
-                    btn.className = 'btn';
-                    btn.innerText = item;
-                    // Sürükleme olayları
-                    btn.ontouchstart = (e) => Interaction.startDrag(e, item, i);
-                    btn.onmousedown = (e) => Interaction.startDrag(e, item, i);
-                    cont.appendChild(btn);
-                });
-            },
-
-            applyLook: () => {
-                document.getElementById('pou-body').style.background = State.equipped.color;
-                
-                const hat = document.getElementById('acc-hat');
-                if(State.equipped.hat) {
-                    hat.innerText = DB.clothes.find(x=>x.id==State.equipped.hat).icon;
-                    hat.style.display = 'block';
-                } else hat.style.display = 'none';
-
-                const gls = document.getElementById('acc-glasses');
-                if(State.equipped.glasses) {
-                    gls.innerText = DB.clothes.find(x=>x.id==State.equipped.glasses).icon;
-                    gls.style.display = 'block';
-                } else gls.style.display = 'none';
-            },
-
-            toast: (msg) => {
-                const t = document.getElementById('toast');
-                t.innerText = msg; t.classList.add('show');
-                setTimeout(()=>t.classList.remove('show'), 2000);
-            }
-        };
-
-        /* =========================================
-           INTERACTIONS
-           ========================================= */
-        const Interaction = {
-            dragging: false,
-
-            initSwipe: () => {
-                let sx = 0;
-                document.addEventListener('touchstart', e => sx=e.touches[0].clientX, {passive:false});
-                document.addEventListener('touchend', e => {
-                    if(Interaction.dragging) return;
-                    const diff = sx - e.changedTouches[0].clientX;
-                    if(Math.abs(diff) > 50) {
-                        UI.switchRoom(State.room + (diff > 0 ? 1 : -1));
-                    }
-                }, {passive:false});
-            },
-
-            initEyeTrack: () => {
-                const track = (x,y) => {
-                    if(State.sleep) return;
-                    ['p-l','p-r'].forEach(id => {
-                        const el = document.getElementById(id);
-                        const r = el.parentElement.getBoundingClientRect();
-                        const cx = r.left + r.width/2;
-                        const cy = r.top + r.height/2;
-                        const ang = Math.atan2(y-cy, x-cx);
-                        const dist = Math.min(6, Math.hypot(x-cx, y-cy)/8);
-                        el.style.transform = `translate(-50%,-50%) translate(${Math.cos(ang)*dist}px, ${Math.sin(ang)*dist}px)`;
-                    });
-                };
-                window.onmousemove = e => track(e.clientX, e.clientY);
-                window.ontouchmove = e => track(e.touches[0].clientX, e.touches[0].clientY);
-            },
-
-            startDrag: (e, type, idx) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if(State.sleep) { UI.toast("Uyuyor!"); return; }
-                
-                Interaction.dragging = true;
-                const el = document.createElement('div');
-                el.className = 'drag-obj';
-                el.innerText = (type=='sponge'?'🧽':type=='shower'?'🚿':type);
-                document.body.appendChild(el);
-
-                const move = (cx, cy) => {
-                    el.style.left = (cx - 40) + 'px';
-                    el.style.top = (cy - 40) + 'px';
-                    
-                    // Temizlik Mantığı
-                    if(type=='sponge'||type=='shower') {
-                        document.querySelectorAll('.dirt').forEach(d => {
-                            const r = d.getBoundingClientRect();
-                            if(Math.hypot(cx-(r.left+20), cy-(r.top+20)) < 50) {
-                                if(type=='sponge') d.style.background = '#fff';
-                                else if(type=='shower' && d.style.background=='rgb(255, 255, 255)') {
-                                    d.remove();
-                                    State.stats.clean = Math.min(100, State.stats.clean+10);
-                                    State.coins++; UI.update();
-                                }
-                            }
-                        });
-                    }
-                };
-
-                const t = e.touches ? e.touches[0] : e;
-                move(t.clientX, t.clientY);
-
-                const up = (ev) => {
-                    el.remove();
-                    Interaction.dragging = false;
-                    window.removeEventListener('touchmove', tm);
-                    window.removeEventListener('touchend', up);
-                    window.removeEventListener('mousemove', mm);
-                    window.removeEventListener('mouseup', up);
-
-                    // Yeme Mantığı
-                    if(type!='sponge' && type!='shower') {
-                        const m = document.getElementById('mouth').getBoundingClientRect();
-                        const r = el.getBoundingClientRect();
-                        if(r.left < m.right && r.right > m.left && r.top < m.bottom && r.bottom > m.top) {
-                            if(State.stats.hunger >= 100) { UI.toast("Tokum!"); }
-                            else {
-                                State.inventory.splice(idx, 1);
-                                State.stats.hunger = Math.min(100, State.stats.hunger + 25);
-                                Engine.eatAnimation();
-                                UI.renderInventory();
-                                UI.update();
-                                if(Math.random()>0.5) Engine.spawnDirt();
-                            }
-                        }
-                    }
-                };
-
-                const tm = ev => move(ev.touches[0].clientX, ev.touches[0].clientY);
-                const mm = ev => move(ev.clientX, ev.clientY);
-                
-                window.addEventListener('touchmove', tm, {passive:false});
-                window.addEventListener('touchend', up);
-                window.addEventListener('mousemove', mm);
-                window.addEventListener('mouseup', up);
-            },
-
-            startTool: (e, type) => Interaction.startDrag(e, type, -1)
-        };
-
-        /* =========================================
-           SHOP SYSTEM
-           ========================================= */
-        const Shop = {
-            open: (cat) => {
-                document.getElementById('modal-shop').classList.add('open');
-                Shop.render(cat);
-            },
-            close: () => document.getElementById('modal-shop').classList.remove('open'),
+        // TOOL DRAG MECHANIC
+        if (this.engine.uiManager.isToolActive) {
+            this.isDragging = true;
             
-            render: (cat) => {
-                // Tab Highlight
-                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                event.target.classList.add('active'); // Basit event capture
+            // Raycast - Parmağın altındaki tarlayı bul
+            const tile = this.engine.gridSystem.getTileAtScreenPos(x, y);
+            
+            if (tile) {
+                // Tarlayı vurgula
+                this.engine.gridSystem.highlightTile(tile);
+                // Aksiyon uygula
+                this.engine.gridSystem.applyToolAction(tile, this.engine.uiManager.activeTool);
+            }
+        }
+    }
 
-                const g = document.getElementById('shop-grid'); g.innerHTML = '';
-                const list = DB[cat] || [];
+    end() {
+        this.isDragging = false;
+        // Tool drag bittiyse tool'u bırak
+        if (this.engine.uiManager.isToolActive) {
+            this.engine.uiManager.deactivateTool();
+            this.engine.gridSystem.clearHighlights();
+        }
+    }
+}
+
+// --- GRID SYSTEM ---
+class GridSystem {
+    constructor(gameEngine) {
+        this.engine = gameEngine;
+        this.tiles = [];
+        this.offsetX = 0;
+        this.offsetY = 0;
+        
+        // Grid'i başlat veya yükle
+        this.initGrid();
+    }
+
+    initGrid() {
+        // Kayıtlı veri varsa oradan, yoksa sıfırdan
+        const savedData = this.engine.saveData ? this.engine.saveData.tiles : null;
+
+        for (let r = 0; r < GRID_ROWS; r++) {
+            this.tiles[r] = [];
+            for (let c = 0; c < GRID_COLS; c++) {
+                const tile = new Tile(r, c);
+                // Kayıt varsa veriyi işle
+                if (savedData && savedData[r] && savedData[r][c]) {
+                    Object.assign(tile, savedData[r][c]);
+                }
+                this.tiles[r][c] = tile;
+            }
+        }
+        this.centerGrid();
+    }
+
+    centerGrid() {
+        // Grid'i ekranın ortasına yerleştir
+        const gridWidth = GRID_COLS * TILE_SIZE;
+        const gridHeight = GRID_ROWS * TILE_SIZE;
+        this.offsetX = (this.engine.canvas.width / this.engine.dpr - gridWidth) / 2;
+        this.offsetY = (this.engine.canvas.height / this.engine.dpr - gridHeight) / 2;
+    }
+
+    // Ekran koordinatını (x,y) Grid (r,c) çevirir
+    getTileAtScreenPos(x, y) {
+        // Canvas scale edildiği için inputu DPR'a bölmek gerekmez (BoundingRect kullanılırsa gerekir)
+        // Ancak burada input direkt clientX geliyor, canvas style size ile eşleşmeli.
+        // Basitlik için:
+        
+        const adjX = x - this.offsetX;
+        const adjY = y - this.offsetY;
+
+        const col = Math.floor(adjX / TILE_SIZE);
+        const row = Math.floor(adjY / TILE_SIZE);
+
+        if (row >= 0 && row < GRID_ROWS && col >= 0 && col < GRID_COLS) {
+            return this.tiles[row][col];
+        }
+        return null;
+    }
+
+    applyToolAction(tile, tool) {
+        // Hasat İşlemi
+        if (tool.type === ToolType.HARVEST) {
+            if (tile.state === 'planted' && tile.isReady()) {
+                const crop = CropManager.getData(tile.cropId);
                 
-                list.forEach(item => {
-                    const el = document.createElement('div');
-                    el.className = 'item';
-                    const owned = State.unlocked.includes(item.id);
-                    if(owned) el.className += ' owned';
-
-                    el.innerHTML = `
-                        <div style="font-size:30px">${item.icon}</div>
-                        <div style="font-weight:bold;font-size:12px">${item.name}</div>
-                        <div style="color:${owned?'#27ae60':'#e67e22'}">${owned ? 'Sahipsin' : item.price}</div>
-                    `;
-                    el.onclick = () => Shop.buy(item, cat);
-                    g.appendChild(el);
-                });
-            },
-
-            buy: (item, cat) => {
-                if(cat == 'clothes' && State.unlocked.includes(item.id)) {
-                    // Giy
-                    State.equipped[item.type] = (State.equipped[item.type] == item.id) ? null : item.id;
-                    UI.applyLook(); UI.toast("Giyildi"); return;
+                // Depo Kontrolü
+                if (this.engine.inventoryCount >= this.engine.maxSilo) {
+                    this.engine.uiManager.showToast("Depo Dolu!");
+                    return;
                 }
 
-                if(State.coins >= item.price) {
-                    State.coins -= item.price;
-                    if(cat == 'food') { 
-                        State.inventory.push(item.icon); 
-                        UI.renderInventory(); 
-                        UI.toast("Leziz!");
-                    }
-                    else if(cat == 'clothes') { 
-                        State.unlocked.push(item.id); 
-                        Shop.render(cat);
-                        UI.toast("Satın Alındı!"); 
-                    }
-                    else if(cat == 'potions') {
-                        if(item.type == 'heal') State.stats = {hunger:100,clean:100,energy:100,fun:100};
-                        else if(item.type == 'color') { State.equipped.color = item.val; UI.applyLook(); }
-                        UI.toast("Lıkır Lıkır!");
-                    }
-                    UI.update();
+                // Hasat Başarılı
+                tile.state = 'empty';
+                tile.cropId = null;
+                this.engine.addReward(crop.xp, crop.sellPrice); // Direkt satılıyor gibi simüle ettim basitlik için
+                this.engine.inventoryCount++;
+                this.engine.playSound('pop'); // (Ses placeholder)
+            }
+        }
+        
+        // Ekim İşlemi
+        else if (tool.type === ToolType.PLANT) {
+            if (tile.state === 'empty') {
+                const crop = CropManager.getData(tool.cropId);
+                
+                // Para Kontrolü
+                if (this.engine.gold >= crop.seedCost) {
+                    this.engine.gold -= crop.seedCost;
+                    tile.state = 'planted';
+                    tile.cropId = crop.id;
+                    tile.plantedAt = Date.now();
+                    this.engine.uiManager.updateHUD();
                 } else {
-                    UI.toast("Para Yetersiz!");
+                    this.engine.uiManager.showToast("Yetersiz Altın!");
                 }
             }
-        };
+        }
+    }
 
-        /* =========================================
-           MINIGAMES (CANVAS)
-           ========================================= */
-        const MiniGames = {
-            active: false, ctx: null, cvs: null, loop: null,
-            mode: '', score: 0, entities: [], player: {},
+    highlightTile(targetTile) {
+        this.clearHighlights();
+        targetTile.isVisualHighlight = true;
+    }
 
-            start: (mode) => {
-                MiniGames.active = true; MiniGames.mode = mode; MiniGames.score = 0;
-                document.getElementById('modal-game').classList.add('open');
+    clearHighlights() {
+        for(let r=0; r<GRID_ROWS; r++) {
+            for(let c=0; c<GRID_COLS; c++) {
+                this.tiles[r][c].isVisualHighlight = false;
+            }
+        }
+    }
+
+    draw(ctx) {
+        for (let r = 0; r < GRID_ROWS; r++) {
+            for (let c = 0; c < GRID_COLS; c++) {
+                const tile = this.tiles[r][c];
+                const x = c * TILE_SIZE + this.offsetX;
+                const y = r * TILE_SIZE + this.offsetY;
+
+                // 1. Zemin (Toprak)
+                ctx.fillStyle = tile.state === 'empty' ? '#8d6e63' : '#5d4037'; // Açık/Koyu kahve
                 
-                const cvs = document.getElementById('game-cvs');
-                cvs.width = cvs.offsetWidth; cvs.height = cvs.offsetHeight;
-                MiniGames.cvs = cvs; MiniGames.ctx = cvs.getContext('2d');
-                MiniGames.entities = [];
+                // Highlight efekti
+                if (tile.isVisualHighlight) ctx.fillStyle = '#a1887f';
 
-                if(mode == 'skyjump') {
-                    MiniGames.player = { x: cvs.width/2, y: cvs.height-100, vy: -10, r: 15 };
-                    // Başlangıç platformları
-                    for(let i=0; i<8; i++) MiniGames.entities.push({
-                        x: Math.random()*(cvs.width-60), y: cvs.height - (i*100), w: 60, h: 10
-                    });
-                } else if(mode == 'fooddrop') {
-                    MiniGames.player = { x: cvs.width/2, y: cvs.height-50, w:50, h:50 };
-                }
+                ctx.fillRect(x + 1, y + 1, TILE_SIZE - 2, TILE_SIZE - 2); // Marginli çizim
 
-                // Inputs
-                cvs.onclick = () => { if(mode=='skyjump') MiniGames.player.vy = -13; };
-                cvs.ontouchstart = (e) => {
-                    e.preventDefault(); 
-                    if(mode=='skyjump') MiniGames.player.vy = -13;
-                    MiniGames.player.x = e.touches[0].clientX;
-                };
-                cvs.ontouchmove = (e) => {
-                    e.preventDefault();
-                    MiniGames.player.x = e.touches[0].clientX;
-                };
+                // Border (Hafif 3D)
+                ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(x, y, TILE_SIZE, TILE_SIZE);
 
-                MiniGames.tick();
-            },
+                // 2. Ekin Çizimi
+                if (tile.state === 'planted') {
+                    const progress = tile.getGrowthProgress();
+                    const crop = CropManager.getData(tile.cropId);
+                    
+                    // Büyüme animasyonu (Scale)
+                    const size = 20 + (progress * 40); // 20px den 60px'e
+                    const opacity = 0.5 + (progress * 0.5);
 
-            stop: () => {
-                MiniGames.active = false; cancelAnimationFrame(MiniGames.loop);
-                document.getElementById('modal-game').classList.remove('open');
-                if(MiniGames.score > 0) {
-                    const r = Math.floor(MiniGames.score/10);
-                    State.coins += r; 
-                    State.stats.fun = Math.min(100, State.stats.fun + 20);
-                    UI.toast(`Oyun Bitti: +${r} Altın`);
-                    UI.update();
-                }
-            },
-
-            tick: () => {
-                if(!MiniGames.active) return;
-                const c = MiniGames.ctx, w = MiniGames.cvs.width, h = MiniGames.cvs.height, p = MiniGames.player;
-                c.clearRect(0,0,w,h);
-
-                if(MiniGames.mode == 'skyjump') {
-                    p.vy += 0.5; p.y += p.vy;
-
-                    // Kamera
-                    if(p.y < h/2) {
-                        p.y = h/2;
-                        const d = -p.vy;
-                        MiniGames.score += d;
-                        MiniGames.entities.forEach(e => {
-                            e.y += d;
-                            if(e.y > h) { e.y = -20; e.x = Math.random()*(w-60); }
-                        });
+                    ctx.font = `${size}px Arial`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    
+                    // Eğer hazırsa zıplama efekti (basit Math.sin)
+                    let bounceY = 0;
+                    if (progress >= 1.0) {
+                         bounceY = Math.sin(Date.now() / 200) * 5;
                     }
 
-                    // Çarpışma
-                    if(p.vy > 0) MiniGames.entities.forEach(e => {
-                        if(p.x > e.x-10 && p.x < e.x+e.w+10 && p.y+p.r > e.y && p.y+p.r < e.y+20) p.vy = -13;
-                    });
+                    ctx.globalAlpha = opacity;
+                    ctx.fillText(crop.emoji, x + TILE_SIZE/2, y + TILE_SIZE/2 + bounceY);
+                    ctx.globalAlpha = 1.0;
 
-                    if(p.y > h) { MiniGames.stop(); return; }
-
-                    // Çizim
-                    c.fillStyle = '#2ecc71'; MiniGames.entities.forEach(e => c.fillRect(e.x, e.y, e.w, e.h));
-                    c.fillStyle = State.equipped.color; c.beginPath(); c.arc(p.x, p.y, p.r, 0, Math.PI*2); c.fill();
-                    // Göz
-                    c.fillStyle = 'white'; c.beginPath(); c.arc(p.x-5,p.y-3,5,0,Math.PI*2); c.fill(); c.beginPath(); c.arc(p.x+5,p.y-3,5,0,Math.PI*2); c.fill();
-                    c.fillStyle = 'black'; c.beginPath(); c.arc(p.x-5,p.y-3,2,0,Math.PI*2); c.fill(); c.beginPath(); c.arc(p.x+5,p.y-3,2,0,Math.PI*2); c.fill();
-
-                } 
-                else if(MiniGames.mode == 'fooddrop') {
-                    if(Math.random() < 0.03) MiniGames.entities.push({x:Math.random()*(w-30), y:-30, t:Math.random()>0.8?'💣':'🍎'});
-                    
-                    MiniGames.entities.forEach((e, i) => {
-                        e.y += 5; c.font="30px Arial"; c.fillText(e.t, e.x, e.y);
-                        if(Math.hypot(p.x-e.x, p.y-e.y) < 40) {
-                            if(e.t=='💣') { MiniGames.stop(); return; }
-                            MiniGames.score += 20; MiniGames.entities.splice(i,1);
-                        }
-                    });
-
-                    c.fillStyle = State.equipped.color; c.beginPath(); c.arc(p.x, p.y, 25, 0, Math.PI*2); c.fill();
+                    // Progress Bar (Henüz büyümediyse)
+                    if (progress < 1.0) {
+                        ctx.fillStyle = '#444';
+                        ctx.fillRect(x + 10, y + TILE_SIZE - 15, TILE_SIZE - 20, 5);
+                        ctx.fillStyle = '#76ff03';
+                        ctx.fillRect(x + 10, y + TILE_SIZE - 15, (TILE_SIZE - 20) * progress, 5);
+                    }
                 }
-
-                document.getElementById('game-score').innerText = Math.floor(MiniGames.score);
-                MiniGames.loop = requestAnimationFrame(MiniGames.tick);
             }
-        };
+        }
+    }
+}
+</script><script>
+/**
+ * PART 3: GAME ENGINE & UI
+ */
 
-        window.onload = Engine.init;
-    </script>
+// --- UI MANAGER ---
+class UIManager {
+    constructor(gameEngine) {
+        this.engine = gameEngine;
+        this.menu = document.getElementById('context-menu');
+        this.isToolActive = false;
+        this.activeTool = null;
+        
+        // Element Referansları
+        this.hudLevel = document.getElementById('level-display');
+        this.hudXP = document.getElementById('xp-display');
+        this.hudCoin = document.getElementById('coin-display');
+        this.hudSilo = document.getElementById('silo-display');
+    }
+
+    updateHUD() {
+        this.hudLevel.innerText = `Lvl: ${this.engine.level}`;
+        this.hudXP.innerText = `XP: ${this.engine.xp}`;
+        this.hudCoin.innerText = `💰 ${this.engine.gold}`;
+        this.hudSilo.innerText = `Depo: ${this.engine.inventoryCount}/${this.engine.maxSilo}`;
+    }
+
+    showToast(msg) {
+        const toast = document.getElementById('toast-msg');
+        toast.innerText = msg;
+        toast.style.opacity = 1;
+        setTimeout(() => toast.style.opacity = 0, 2000);
+    }
+
+    showContextMenu(tile, screenX, screenY) {
+        // Menü pozisyonu
+        this.menu.style.left = `${screenX}px`;
+        this.menu.style.top = `${screenY - 20}px`;
+        this.menu.style.display = 'flex';
+        this.menu.innerHTML = ''; // Temizle
+
+        // İçeriği duruma göre doldur
+        // 1. ORAK (Hasat)
+        if (tile.state === 'planted' && tile.isReady()) {
+            const btn = this.createToolBtn('🗡️', { type: ToolType.HARVEST });
+            this.menu.appendChild(btn);
+        }
+        
+        // 2. TOHUMLAR (Ekim)
+        else if (tile.state === 'empty') {
+            [CropManager.WHEAT, CropManager.CORN, CropManager.CARROT].forEach(crop => {
+                const btn = this.createToolBtn(crop.emoji, { type: ToolType.PLANT, cropId: crop.id });
+                this.menu.appendChild(btn);
+            });
+        } 
+        
+        // Hiçbir şey yoksa menüyü gizle
+        if (this.menu.children.length === 0) {
+            this.menu.style.display = 'none';
+        }
+    }
+
+    createToolBtn(emoji, toolData) {
+        const div = document.createElement('div');
+        div.className = 'tool-icon';
+        div.innerText = emoji;
+        
+        // TOUCH START - Sürükleme Başlangıcı
+        div.addEventListener('touchstart', (e) => {
+            e.preventDefault(); // Menünün kapanmasını engelle
+            this.activateTool(toolData);
+            this.menu.style.display = 'none'; // Menüyü gizle ki altını görelim
+        }, { passive: false });
+        
+        // Mouse için de destek (Test amaçlı)
+        div.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            this.activateTool(toolData);
+            this.menu.style.display = 'none';
+        });
+
+        return div;
+    }
+
+    hideContextMenu() {
+        this.menu.style.display = 'none';
+    }
+
+    activateTool(toolData) {
+        this.isToolActive = true;
+        this.activeTool = toolData;
+        console.log("Tool Seçildi:", toolData);
+        // İsteğe bağlı: Ekranda seçili tool imleci gösterilebilir
+    }
+
+    deactivateTool() {
+        this.isToolActive = false;
+        this.activeTool = null;
+    }
+}
+
+// --- MAIN GAME ENGINE ---
+class GameEngine {
+    constructor() {
+        this.canvas = document.getElementById('gameCanvas');
+        this.ctx = this.canvas.getContext('2d');
+        
+        // Veri Yükleme
+        this.saveData = SaveSystem.load();
+        
+        // Ekonomi ve İstatistikler
+        this.gold = this.saveData ? this.saveData.gold : 500;
+        this.xp = this.saveData ? this.saveData.xp : 0;
+        this.level = this.saveData ? this.saveData.level : 1;
+        this.inventoryCount = this.saveData ? this.saveData.inventoryCount : 0;
+        this.maxSilo = 20;
+
+        // High DPI Ayarı
+        this.dpr = window.devicePixelRatio || 1;
+        this.resize();
+        window.addEventListener('resize', () => this.resize());
+
+        // Alt Sistemler
+        this.gridSystem = new GridSystem(this);
+        this.uiManager = new UIManager(this);
+        this.inputManager = new InputManager(this.canvas, this);
+        
+        this.lastTime = 0;
+        
+        // Auto-Save Döngüsü (Her 10 saniyede bir)
+        setInterval(() => this.saveGame(), 10000);
+
+        // İlk UI güncellemesi
+        this.uiManager.updateHUD();
+
+        // Döngüyü başlat
+        requestAnimationFrame((t) => this.loop(t));
+    }
+
+    resize() {
+        this.canvas.width = window.innerWidth * this.dpr;
+        this.canvas.height = window.innerHeight * this.dpr;
+        this.ctx.scale(this.dpr, this.dpr);
+        if (this.gridSystem) this.gridSystem.centerGrid();
+    }
+
+    saveGame() {
+        const state = {
+            gold: this.gold,
+            xp: this.xp,
+            level: this.level,
+            inventoryCount: this.inventoryCount,
+            tiles: this.gridSystem.tiles // Tile nesneleri JSON'a serialize olur
+        };
+        SaveSystem.save(state);
+    }
+
+    addReward(xp, gold) {
+        this.xp += xp;
+        this.gold += gold;
+        this.uiManager.updateHUD();
+        // Basit Level mantığı
+        if (this.xp > this.level * 100) {
+            this.level++;
+            this.uiManager.showToast(`SEVİYE ATLADIN! Lvl ${this.level}`);
+        }
+    }
+
+    playSound(type) {
+        // AudioContext veya basit HTML5 Audio eklenebilir.
+        // Tarayıcı kısıtlamaları nedeniyle boş bırakıldı.
+    }
+
+    loop(timestamp) {
+        const dt = timestamp - this.lastTime;
+        this.lastTime = timestamp;
+
+        // 1. UPDATE
+        // Animasyonlar vs. burada güncellenebilir
+
+        // 2. RENDER
+        // Ekranı temizle (Çim rengi)
+        this.ctx.fillStyle = '#81c784'; 
+        this.ctx.fillRect(0, 0, this.canvas.width / this.dpr, this.canvas.height / this.dpr);
+
+        // Izgarayı çiz
+        this.gridSystem.draw(this.ctx);
+
+        requestAnimationFrame((t) => this.loop(t));
+    }
+}
+
+// Oyunu Başlat
+window.onload = () => {
+    const game = new GameEngine();
+};
+
+</script>
 </body>
 </html>
